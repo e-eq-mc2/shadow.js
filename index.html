@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="css/html5reset-1.6.1.css">
+	<link rel="stylesheet" type="text/css" href="css/main.css">
+	<script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="js/webgl-debug.js"></script>
+	<script type="text/javascript" src="js/glMatrix-0.9.5.js"></script>
+	<script type="text/javascript" src="js/webgl-util.js"></script>
+	<script type="text/javascript" src="js/rbody.js"></script>
+	<script type="text/javascript" src="js/main.js"></script>
+	<title>shadow.js</title>
+	<script id="shadowPassVs" type="x-shader/x-vertex">
+#ifdef GL_ES
+precision highp float;
+#endif
+
+attribute vec3  vertex;
+attribute vec3  normal;
+uniform   mat4      pM;
+uniform   mat4     mvM;
+uniform   mat3      nM;
+varying   vec3 vNormal;
+
+void main(void) {
+	gl_Position = pM * mvM * vec4(vertex, 1.0);
+	vNormal     = normalize(nM * normal);
+}
+	</script>
+	<script id="shadowPassFs" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+
+uniform sampler2D    texture; // dummy
+uniform      bool useTexture; // dummy
+varying      vec3    vNormal;
+
+vec4 packDepth(const in float depth){
+	//http://doxas.hatenablog.com/entry/2012/08/16/061458
+	float r = depth;
+	float g = fract(r * 255.0); // fract(x) = x - floor(x)
+	float b = fract(g * 255.0);
+	float a = fract(b * 255.0);
+	float coef = 1.0 / 255.0;
+	r -= g * coef;
+	g -= b * coef;
+	b -= a * coef;
+	return vec4(r, g, b, a);
+}
+
+void main(void) {
+	gl_FragData[0] = packDepth(gl_FragCoord.z);
+}		
+	</script>
+
+	<script id="lightPassVs" type="x-shader/x-vertex">
+#ifdef GL_ES
+precision highp float;
+#endif
+
+attribute vec3       vertex;
+attribute vec3       normal;
+attribute vec2     texCoord;
+uniform   mat4           pM;
+uniform   mat4          mvM;
+uniform   mat3           nM;
+uniform   mat4           sM;
+varying   vec4 vShadowCoord;
+varying   vec3    vPosition;
+varying   vec3      vNormal;
+varying   vec2    vTexCoord;
+
+void main(void) {
+	vec4 position = mvM * vec4(vertex, 1.0);
+	gl_Position   = pM * position;
+	vShadowCoord  = sM * position;
+	vPosition     = position.xyz;
+	vNormal       = nM * normal;
+	vTexCoord     = texCoord;
+}
+	</script>
+	<script id="lightPassFs" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+
+uniform sampler2D      depthTexture;
+uniform sampler2D           texture;
+uniform      bool        useTexture;
+uniform     float   darkeningFactor;
+
+uniform      vec3    cameraPosition;
+uniform      vec3     lightPosition;
+uniform      vec3    lightDirection;
+
+uniform      vec4   materialAmbient;
+uniform      vec4   materialDiffuse;
+uniform      vec4  materialSpecular;
+uniform     float materialShininess;
+uniform      vec4      lightAmbient;
+uniform      vec4      lightDiffuse;
+uniform      vec4     lightSpecular;
+uniform      ivec2       windowSize;
+
+varying      vec4      vShadowCoord;
+varying      vec3         vPosition;
+varying      vec3           vNormal;
+varying      vec2         vTexCoord;
+
+float unpackDepth(const in vec4 rgba) {
+	const float rMask = 1.0;
+	const float gMask = 1.0 / 255.0;
+	const float bMask = 1.0 / (255.0 * 255.0);
+	const float aMask = 1.0 / (255.0 * 255.0 * 255.0);
+	float depth = dot(rgba, vec4(rMask, gMask, bMask, aMask));
+	return depth;
+}	
+
+float getDepth(const in sampler2D texture, const in vec2 texCoord) {
+#if 0
+	float depth = unpackDepth(texture2D(texture, texCoord));
+#else
+	vec2 pixelSize = vec2(1.0 / float(windowSize.x), 1.0 / float(windowSize.y));
+	float weight = 1.0 / 9.0;
+	float depth = 0.0;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x - 1.0 * pixelSize.x, texCoord.y - 1.0 * pixelSize.x))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x - 1.0 * pixelSize.x, texCoord.y                    ))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x - 1.0 * pixelSize.x, texCoord.y + 1.0 * pixelSize.x))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x                    , texCoord.y - 1.0 * pixelSize.x))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x                    , texCoord.y                    ))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x                    , texCoord.y + 1.0 * pixelSize.x))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x + 1.0 * pixelSize.x, texCoord.y - 1.0 * pixelSize.x))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x + 1.0 * pixelSize.x, texCoord.y                    ))) * weight;
+	depth += unpackDepth(texture2D(texture, vec2(texCoord.x + 1.0 * pixelSize.x, texCoord.y + 1.0 * pixelSize.x))) * weight;
+#endif
+	return depth;
+}
+
+void main(void) {
+	vec3 shadowCoord = vShadowCoord.xyz / vShadowCoord.w;
+	float depth = getDepth(depthTexture, shadowCoord.xy);
+
+#if 0
+	// Shadow Mapping(SM)
+	float visibility = ((depth - shadowCoord.z) > - 0.0005) ? 1.0 : 0.5;
+#else
+	// Exponential Shadow Maps(ESM)
+	float visibility = clamp(exp(darkeningFactor * (depth - shadowCoord.z)), 0.0, 1.0);
+#endif
+
+	vec3 n = normalize(vNormal);
+	vec3 l = normalize(lightPosition - vPosition);
+	vec3 v = normalize(-vPosition);
+	vec3 r = normalize(reflect(-l, n));
+
+	float NdotL = dot(n, l);
+	float RdotV = dot(r, v);
+	vec4 ambient  = materialAmbient  * lightAmbient ; 
+	vec4 diffuse  = materialDiffuse  * lightDiffuse ;
+	vec4 specular = materialSpecular * lightSpecular;
+	
+ 	diffuse.rgb  *= max(NdotL, 0.0) * visibility;
+ 
+	if (NdotL >= 0.0) {
+		specular.rgb *= pow(max(RdotV, 0.0), materialShininess);
+	} else {
+	   	specular      = vec4(0.0, 0.0, 0.0, 0.0);
+	}
+
+	vec4 color = ambient + diffuse + specular; 
+	
+	if (useTexture) {
+		color *= texture2D(texture, vTexCoord);
+	}
+	
+	gl_FragData[0] = color;
+}
+	</script>
+</head>
+<body>
+	<div id="screen">
+		<div id="canvasArea">
+			<canvas id="webglCanvas"></canvas>
+		</div>
+		<div id="textArea">
+			<h1>Rigid-body Simulation + Shadow Mapping</h1>
+			<div id="info"></div>
+		</div>
+	</div>
+</body>
+</html>
