@@ -128,7 +128,7 @@ $(function (bb) {
 		var pMLight = mat4.frustum(-2, 2, -2, 2, 4, 25);
 		var pMEye   = mat4.frustum(-1, 1, -1, 1, 4, 30);
 		
-		var lightPosition = [0, 10,  0];
+		var lightPosition = [0, 15,  0];
 		var   eyePosition = [0,  3, 22];
 		var vMLight = mat4.lookAt(lightPosition, [0,  0, 0], [0, 0, 1]);
 		var vMEye   = mat4.lookAt(  eyePosition, [0,  3, 0], [0, 1, 0]);
@@ -198,7 +198,7 @@ $(function (bb) {
     		gl.uniform4fv(uniform.materialDiffuse  , [0.8, 0.8, 0.8, 1.0]);
     		gl.uniform4fv(uniform.materialSpecular , [0.6, 0.6, 0.6, 1.0]);
     		gl.uniform1f (uniform.materialShininess,                 20.0);
-    		gl.uniform1f (uniform.darkeningFactor  ,                 40.0);
+    		gl.uniform1f (uniform.darkeningFactor  ,                 20.0);
 
     		drawBody    (attribute, uniform, vM);
 
@@ -255,7 +255,6 @@ $(function (bb) {
 		// local function //
 		////////////////////
 		function drawBody(attribute, uniform, vM) {
-			//  body
 			bodyBuf.vertex.bind(gl, attribute.vertex  );
 			bodyBuf.normal.bind(gl, attribute.normal  );
 			bodyBuf.index .bind(gl);
@@ -277,7 +276,6 @@ $(function (bb) {
 			bodyBuf.index .unbind(gl);
 		}
 		function drawFloor(attribute, uniform, vM) {
-			// floor
 			floorBuf.vertex  .bind(gl, attribute.vertex  );
 			floorBuf.normal  .bind(gl, attribute.normal  );
 			floorBuf.texCoord.bind(gl, attribute.texCoord);
@@ -300,7 +298,6 @@ $(function (bb) {
 			floorBuf.tex2D   .unbind(gl);
 		}
 		function drawBoundary(attribute, uniform, vM) {
-			// boundary
 			boundaryBuf.vertex.bind(gl, attribute.vertex);
 			boundaryBuf.index .bind(gl);
 
