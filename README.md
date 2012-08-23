@@ -1,5 +1,6 @@
-This is a **WebGL** demo based on **Rigid-body Simulation** and **Shadow Mapping**.  
+shadow.js - a WebGL demo
 ========
+This is a **WebGL** demo based on **Rigid-body Simulation** and **Shadow Mapping**.
 
 Quick Start
 --------
