@@ -13,4 +13,4 @@ Naoki Nishizawa
 
 Key Words
 --------
-HTML5, JavaScript, WebGL, Rigit-body Simuration, Shadow Mapping
+HTML5, JavaScript, WebGL, Rigit-body Simulation, Shadow Mapping
