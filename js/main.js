@@ -89,7 +89,7 @@ $(function (bb) {
 		this.normal  .setBuffer(gl, data.normal  );
 		this.texCoord.setBuffer(gl, data.texCoord);
 		this.index   .setBuffer(gl, data.index   );
-		this.tex2D   .setBufferFromImage(gl, "img/space.png");
+		this.tex2D   .setBufferFromImage(gl, "img/karada1.png");
 	};
     var boundaryBuf = new function () {
 		this.vertex = new ArrayBuffer3f(gl, attribute.vertex);
@@ -287,7 +287,7 @@ $(function (bb) {
 
 			gl.uniformMatrix4fv(uniform.mvM, false,            mvM );
 			gl.uniformMatrix3fv(uniform. nM, false, normalMat3(mvM));
-			gl.uniform1i(uniform.useTexture, 0);
+			gl.uniform1i(uniform.useTexture, 1);
 
 			gl.drawElements(gl.TRIANGLES, floorBuf.index.length, gl.UNSIGNED_SHORT, 0);
 

@@ -10,11 +10,11 @@ function RbodySystem() {
 	var radius    =  1 / Math.max(nx + 1, nz + 1) * 1.2;
 	var mass      =    1.00;
 	var Kspring   = 3000.00;
-	var Kdamping  =    5.00;
+	var Kdamping  =    6.50;
 	var Kfriction =    1.00;
 	var ga        = [0, -9.8, 0];
 	var x0        = [ -3,   0, -3];
-	var x1        = [  3,   6,  3];
+	var x1        = [  3,   9,  3];
 	
 	this.initialize(
 		nx, ny, nz,
