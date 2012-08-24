@@ -89,7 +89,11 @@ $(function (bb) {
 		this.normal  .setBuffer(gl, data.normal  );
 		this.texCoord.setBuffer(gl, data.texCoord);
 		this.index   .setBuffer(gl, data.index   );
-		this.tex2D   .setBufferFromImage(gl, "img/karada1.png");
+		this.tex2D   .setBufferFromImage(
+		    gl, 
+		    "img/karada1.png", 
+		    {minFilter : gl.LINEAR_MIPMAP_LINEAR, magFilter : gl.LINEAR}
+	    );
 	};
     var boundaryBuf = new function () {
 		this.vertex = new ArrayBuffer3f(gl, attribute.vertex);
