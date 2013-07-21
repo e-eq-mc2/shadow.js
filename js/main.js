@@ -22,6 +22,7 @@ $(function (bb) {
 		shadowPass : new function (prgObj) {
 			this.vertex   = gl.getAttribLocation(prgObj, "vertex"  );
 			this.normal   = gl.getAttribLocation(prgObj, "normal"  );
+			this.texCoord = gl.getAttribLocation(prgObj, "texCoord");
 		} (prgObj.shadowPass),
 		lightPass : new function (prgObj) {
 			this.vertex   = gl.getAttribLocation(prgObj, "vertex"  );
@@ -31,9 +32,11 @@ $(function (bb) {
 	};
 	var uniform = {
 		shadowPass : new function (prgObj) {
-			this. pM             = gl.getUniformLocation(prgObj, "pM"                 );
-			this.mvM             = gl.getUniformLocation(prgObj, "mvM"                ); 
-			this. nM             = gl.getUniformLocation(prgObj, "nM"                 );
+			this. pM               = gl.getUniformLocation(prgObj, "pM"               );
+			this.mvM               = gl.getUniformLocation(prgObj, "mvM"              ); 
+			this. nM               = gl.getUniformLocation(prgObj, "nM"               );
+			this.texture           = gl.getUniformLocation(prgObj, "texture"          );
+			this.useTexture        = gl.getUniformLocation(prgObj, "useTexture"       );
 		} (prgObj.shadowPass),
 		lightPass : new function(prgObj) {
 			this. pM               = gl.getUniformLocation(prgObj, "pM"               );
@@ -53,8 +56,7 @@ $(function (bb) {
 			this.lightDiffuse      = gl.getUniformLocation(prgObj, "lightDiffuse"     );
 			this.lightSpecular     = gl.getUniformLocation(prgObj, "lightSpecular"    );
 			this.windowSize        = gl.getUniformLocation(prgObj, "windowSize"       );
-		} (prgObj.lightPass)
-	};
+		} (prgObj.lightPass) };
 	
 	var frameBuf = new FrameBuffer(gl, canvas.width, canvas.height);
 	
@@ -63,7 +65,7 @@ $(function (bb) {
 		this.normal = new ArrayBuffer3f(gl);
 		this.index  = new ElementArrayBuffer1us(gl);
 
-		var data = new SolidSphere(rbSys.radius, 20, 10);
+		var data = new SolidSphere(rbSys.body.radius, 8, 4);
 		this.vertex.setBuffer(gl, data.vertex);
 		this.normal.setBuffer(gl, data.normal);
 		this.index .setBuffer(gl, data.index );
@@ -77,11 +79,12 @@ $(function (bb) {
 
 		var width  = 6;
 		var height = 6;
+		var z      = 0;
 		var data = new Quad(
-			[ -width / 2, 0, -height / 2], 
-			[  width / 2, 0, -height / 2], 
-			[  width / 2, 0,  height / 2], 
-			[ -width / 2, 0,  height / 2], 
+			[ -width / 2, z, -height / 2], 
+			[  width / 2, z, -height / 2], 
+			[  width / 2, z,  height / 2], 
+			[ -width / 2, z,  height / 2], 
 			[ 0, 1, 0] // normal
 		);
 
@@ -91,10 +94,66 @@ $(function (bb) {
 		this.index   .setBuffer(gl, data.index   );
 		this.tex2D   .setBufferFromImage(
 		    gl, 
-		    "img/karada1.png", 
+		    "img/karada.png", 
 		    {minFilter : gl.LINEAR_MIPMAP_LINEAR, magFilter : gl.LINEAR}
 	    );
 	};
+	var faceBuf = new function () {
+		var ax = -3; var bx =  3;
+		var ay =  0; var by =  6;
+		var az = -3; var bz =  3;
+		var v = [
+			[ ax, ay, az ], [ bx, ay, az ], [ bx, by, az ], [ ax, by, az ],
+			[ ax, ay, bz ], [ bx, ay, bz ], [ bx, by, bz ], [ ax, by, bz ]
+		];
+		var f = [
+			[ 4, 0, 3, 7 ], // -x face
+			[ 1, 5, 6, 2 ], // +x face
+			[ 4, 5, 1, 0 ], // -y face
+			[ 3, 2, 6, 7 ], // +y face
+			[ 0, 1, 2, 3 ], // -z face
+			[ 5, 4, 7, 6 ]  // +z face
+		];
+		var n = [
+			[  1,  0,  0], // -x face
+			[ -1,  0,  0], // +x face
+			[  0,  1,  0], // -y face
+			[  0, -1,  0], // +y face
+			[  0,  0,  1], // -z face
+			[  0,  0, -1]  // +z face
+		];
+		var flist = [0, 1, 3, 4, 5];
+		var bary = new Array(flist.length);
+		for (var i=0; i < flist.length; ++i) {
+			bary[i] = new function(idx) {
+				this.vertex   = new ArrayBuffer3f(gl);
+				this.normal   = new ArrayBuffer3f(gl);
+				this.texCoord = new ArrayBuffer2f(gl);
+				this.index    = new ElementArrayBuffer1us(gl);
+				this.tex2D    = new Tex2DBuffer(gl);
+				var data = new Quad(
+					v[ f[idx][0] ], // v0
+					v[ f[idx][1] ], // v1
+					v[ f[idx][2] ], // v2
+					v[ f[idx][3] ], // v3
+					n[ idx       ]  // normal
+				);
+				this.vertex  .setBuffer(gl, data.vertex  );
+				this.normal  .setBuffer(gl, data.normal  );
+				this.texCoord.setBuffer(gl, data.texCoord);
+				this.index   .setBuffer(gl, data.index   );
+				var img = [0, 1, 4, 5].indexOf(idx) >= 0 ? "img/waza.png" :  "img/kokoro.png";
+				//var img = [0, 1].indexOf(idx) >= 0 ? "img/kokoro.png" :
+				//          [4, 5].indexOf(idx) >= 0 ? "img/waza.png"   : "img/gou.png"; 
+				this.tex2D   .setBufferFromImage(
+				    gl, 
+				    img, 
+				    {minFilter : gl.LINEAR_MIPMAP_LINEAR, magFilter : gl.LINEAR}
+			    );
+			} (flist[i]);
+		} // for i
+		return bary;
+	}; 
     var boundaryBuf = new function () {
 		this.vertex = new ArrayBuffer3f(gl, attribute.vertex);
 		this.index  = new ElementArrayBuffer1us(gl);
@@ -115,18 +174,18 @@ $(function (bb) {
 		return color;
 	} (rbSys.body.length));
 
-	var MAX_LOOP = 5000;
+	var MAX_LOOP = 100000;
 	var TIME_OUT =   20;
 	var loop  = 0;
 	var angle = 0;
 	var timer0 = new Timer();
 	var timer1 = new Timer();
-
+	
 	(function drawLoop() {
 		timer0.start();
 	
 		timer1.start();
-		rbSys.update();
+		var maxOverlap = rbSys.update();
 		timer1.stop();
 
 		var pMLight = mat4.frustum(-2, 2, -2, 2, 4, 25);
@@ -167,6 +226,8 @@ $(function (bb) {
     		
     		drawBody (attribute, uniform, vM);
     		
+    		drawFace (attribute, uniform, vM);
+    		
     		frameBuf.unbind(gl);
 		} (attribute.shadowPass, uniform.shadowPass, vMLight, pMLight));
 
@@ -206,13 +267,18 @@ $(function (bb) {
 
     		drawBody    (attribute, uniform, vM);
 
-    		gl.uniform4fv(uniform.materialAmbient  , [0.2, 0.2, 0.2, 1.0]);
-    		gl.uniform4fv(uniform.materialDiffuse  , [0.8, 0.8, 0.8, 1.0]);
+    		gl.uniform4fv(uniform.materialAmbient  , [0.4, 0.4, 0.4, 1.0]);
+    		gl.uniform4fv(uniform.materialDiffuse  , [0.6, 0.6, 0.6, 1.0]);
     		gl.uniform4fv(uniform.materialSpecular , [0.6, 0.6, 0.6, 1.0]);
     		gl.uniform1f (uniform.materialShininess,                 20.0);
     		gl.uniform1f (uniform.darkeningFactor  ,                 40.0);
 
     		drawFloor   (attribute, uniform, vM);
+    		
+    		gl.disable(gl.CULL_FACE);
+    		drawFace    (attribute, uniform, vM);
+    		gl.enable(gl.CULL_FACE);
+    		gl.cullFace(gl.BACK);
 
 			gl.lineWidth(0.1);
     		gl.uniform4fv(uniform.materialAmbient  , [0.0, 0.0, 0.0, 0.5]);
@@ -240,16 +306,17 @@ $(function (bb) {
 		var ela1 = Math.ceil(timer1.elapsedMsec());
 		var ave1 = Math.ceil(timer1.elapsedTotalMsec() / loop);
 		
-		angle += 360 / 30 * Math.max(ave0, TIME_OUT) / 1000;
+		angle += 360 / 60 * Math.max(ave0, TIME_OUT) / 1000;
 		
-		ela0 = num2str(ela0, 4);
-		ela1 = num2str(ela1, 4);
-		ave0 = num2str(ave0, 4);
-		ave1 = num2str(ave1, 4);
+		ela0 = int2str(ela0, 4);
+		ela1 = int2str(ela1, 4);
+		ave0 = int2str(ave0, 4);
+		ave1 = int2str(ave1, 4);
 		$("#info").html(
 			'<p>' + rbSys.body.length + ' bodies, step: ' + loop + '</p>' +
 			'<p>' +  'R-body Elapsed: ' + ela1 + ' msec ' + '(ave. ' +  ave1 + ')' + '</p>' +
-			'<p>' +  '+WebGL Elapsed: ' + ela0 + ' msec ' + '(ave. ' +  ave0 + ')' + '</p>'
+			'<p>' +  '+WebGL Elapsed: ' + ela0 + ' msec ' + '(ave. ' +  ave0 + ')' + '</p>' +
+			'<p>' +  'Max Overlap: ' + float2str(maxOverlap, 1, 2) + '</p>'
 		);
 
 		var timeoutId = setTimeout(drawLoop, TIME_OUT);
@@ -265,8 +332,7 @@ $(function (bb) {
 
 			var numBody = rbSys.body.length;
 			for (var i=0; i < numBody; ++i) {
-				var bi = rbSys.body[i];
-				var mvM = bi.toGLM4x4(); // mvM = mM
+				var mvM = rbSys.body.toGLM4x4(i); // mvM = mM
 				mat4.multiply(vM, mvM, mvM); // mvM = vM * mvM
 				
 				gl.uniformMatrix4fv(uniform.mvM, false,            mvM );
@@ -301,6 +367,32 @@ $(function (bb) {
 			floorBuf.index   .unbind(gl);
 			floorBuf.tex2D   .unbind(gl);
 		}
+		function drawFace(attribute, uniform, vM) {
+			for (var i=0; i < faceBuf.length; ++i) {
+				var fb = faceBuf[i];
+				fb.vertex  .bind(gl, attribute.vertex  );
+				fb.normal  .bind(gl, attribute.normal  );
+				fb.texCoord.bind(gl, attribute.texCoord);
+				fb.index   .bind(gl);
+				fb.tex2D   .bind(gl, 1, uniform.texture);
+	
+				var mvM = mat4.identity(mat4.create()); // mvM = mM
+				mat4.multiply(vM, mvM, mvM); // mvM = vM * mvM
+	
+				gl.uniformMatrix4fv(uniform.mvM, false,            mvM );
+				gl.uniformMatrix3fv(uniform. nM, false, normalMat3(mvM));
+				gl.uniform1i(uniform.useTexture, 1);
+	
+				gl.drawElements(gl.TRIANGLES, fb.index.length, gl.UNSIGNED_SHORT, 0);
+	
+				fb.vertex  .unbind(gl, attribute.vertex  );
+				fb.normal  .unbind(gl, attribute.normal  );
+				fb.texCoord.unbind(gl, attribute.texCoord);
+				fb.index   .unbind(gl);
+				fb.tex2D   .unbind(gl);
+			}
+
+		}
 		function drawBoundary(attribute, uniform, vM) {
 			boundaryBuf.vertex.bind(gl, attribute.vertex);
 			boundaryBuf.index .bind(gl);
@@ -328,10 +420,27 @@ $(function (bb) {
 function deg2rad(deg) {
 	return deg * Math.PI / 180;
 }
-function num2str(num, digit) {
+function int2str(num, digit) {
 	var str = num + "";
 	while (str.length < digit)
 		str = " " + str;
+	return str.replace(/ /g, "&nbsp;");
+}
+function float2str(num, digitHigh, digitLow) {
+	var str = num + "";
+	if ( str.indexOf(".") < 0 ) str = str + ".0";
+	
+	var numH = str.indexOf(".");
+	for (var i=0; i < digitHigh - numH; ++i) {
+		str = " " + str;
+	}
+	
+	var numL = str.length - (str.indexOf(".") + 1);
+	for (var i=0; i < digitLow - numL; ++i) {
+		str = str + "0";
+	}
+	str = str.slice(0,  digitHigh + digitLow + 1);
+	
 	return str.replace(/ /g, "&nbsp;");
 }
 

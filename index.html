@@ -16,16 +16,19 @@
 precision highp float;
 #endif
 
-attribute vec3  vertex;
-attribute vec3  normal;
-uniform   mat4      pM;
-uniform   mat4     mvM;
-uniform   mat3      nM;
-varying   vec3 vNormal;
+attribute vec3    vertex;
+attribute vec3    normal;
+attribute vec2  texCoord;
+uniform   mat4        pM;
+uniform   mat4       mvM;
+uniform   mat3        nM;
+varying   vec3   vNormal;
+varying   vec2 vTexCoord;
 
 void main(void) {
 	gl_Position = pM * mvM * vec4(vertex, 1.0);
 	vNormal     = normalize(nM * normal);
+	vTexCoord   = texCoord;
 }
 	</script>
 	<script id="shadowPassFs" type="x-shader/x-fragment">
@@ -33,9 +36,10 @@ void main(void) {
 precision highp float;
 #endif
 
-uniform sampler2D    texture; // dummy
-uniform      bool useTexture; // dummy
+uniform sampler2D    texture;
+uniform      bool useTexture;
 varying      vec3    vNormal;
+varying      vec2  vTexCoord;
 
 vec4 packDepth(const in float depth){
 	//http://doxas.hatenablog.com/entry/2012/08/16/061458
@@ -43,7 +47,7 @@ vec4 packDepth(const in float depth){
 	float g = fract(r * 255.0); // fract(x) = x - floor(x)
 	float b = fract(g * 255.0);
 	float a = fract(b * 255.0);
-	float coef = 1.0 / 255.0;
+	const float coef = 1.0 / 255.0;
 	r -= g * coef;
 	g -= b * coef;
 	b -= a * coef;
@@ -51,6 +55,13 @@ vec4 packDepth(const in float depth){
 }
 
 void main(void) {
+	if (useTexture) {
+		vec4 texColor = texture2D(texture, vTexCoord);
+		const float thr = 0.1;
+		if (texColor.a < thr) {
+			discard; // no output fragment
+		}
+	}
 	gl_FragData[0] = packDepth(gl_FragCoord.z);
 }		
 	</script>
@@ -123,7 +134,7 @@ float getDepth(const in sampler2D texture, const in vec2 texCoord) {
 	float depth = unpackDepth(texture2D(texture, texCoord));
 #else
 	vec2 pixelSize = vec2(1.0 / float(windowSize.x), 1.0 / float(windowSize.y));
-	float weight = 1.0 / 9.0;
+	const float weight = 1.0 / 9.0;
 	float depth = 0.0;
 	depth += unpackDepth(texture2D(texture, vec2(texCoord.x - 1.0 * pixelSize.x, texCoord.y - 1.0 * pixelSize.x))) * weight;
 	depth += unpackDepth(texture2D(texture, vec2(texCoord.x - 1.0 * pixelSize.x, texCoord.y                    ))) * weight;
@@ -162,17 +173,25 @@ void main(void) {
 	vec4 specular = materialSpecular * lightSpecular;
 	
  	diffuse.rgb  *= max(NdotL, 0.0) * visibility;
- 
+ 	
 	if (NdotL >= 0.0) {
 		specular.rgb *= pow(max(RdotV, 0.0), materialShininess);
 	} else {
 	   	specular      = vec4(0.0, 0.0, 0.0, 0.0);
 	}
 
+	// apply ambient & diffuse & specular 
 	vec4 color = ambient + diffuse + specular; 
 	
+	// apply texture
 	if (useTexture) {
-		color *= texture2D(texture, vTexCoord);
+		vec4 texColor = texture2D(texture, vTexCoord);
+		const float thr = 0.1;
+		if (texColor.a < thr) {
+			discard; // no output fragment
+		} else {
+			color *= texColor;
+		}
 	}
 	
 	gl_FragData[0] = color;

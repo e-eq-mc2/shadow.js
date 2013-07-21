@@ -5,8 +5,8 @@
 "use strict";
 	
 function initGL(canvas) {
-	//var DEBUG_MODE = true;
-	var DEBUG_MODE = false;
+	var DEBUG_MODE = true;
+	//var DEBUG_MODE = false;
 
 	var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl"); // A || B : if (A == true) return A else return B
 	if ( !gl ) {
@@ -102,18 +102,25 @@ ArrayBuffer.prototype.setBuffer = function (gl, data) {
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
 };
 ArrayBuffer.prototype.bind = function (gl, attributeLocation) {
-	gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-	gl.enableVertexAttribArray(attributeLocation);
-	gl.vertexAttribPointer(
+	gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer); // ARRAY_BUFFER -> this.buffer
+	gl.vertexAttribPointer( // ARRAY_BUFFER(-> this.buffer) -> generic vertex attribute values
 		attributeLocation,
 		this.dataStride, 
 		this.dataType,
 		false, 0, 0
 	);
+	gl.bindBuffer(gl.ARRAY_BUFFER, null); // this.buffer is already bound to generic vertex attribute values
+	//Think of it(gl.bindBuffer(gl.ARRAY_BUFFER, null)) like this. 
+	//glBindBuffer​ sets a global variable, then glVertexAttribPointer​ reads that global variable and stores it in the VAO. 
+	//Changing that global variable after it's been read doesn't affect the VAO. 
+	//You can think of it that way because that's exactly how it works.
+    //This is also why GL_ARRAY_BUFFER​ is not VAO state; 
+    //the actual association between an attribute index and a buffer is made by glVertexAttribPointer​.
+	gl.enableVertexAttribArray(attributeLocation);
 };
 ArrayBuffer.prototype.unbind = function (gl, attributeLocation) {
 	gl.disableVertexAttribArray(attributeLocation);
-	gl.bindBuffer(gl.ARRAY_BUFFER, null);
+	//gl.bindBuffer(gl.ARRAY_BUFFER, null);
 };
 
 function ArrayBuffer3f(gl) {
@@ -458,7 +465,7 @@ function Quad(x0, x1, x2, x3, n) {
 		// V
 		// V
 		ii = i * 2;
-		var u = idx[i] & 1 ? 1 : 0;
+		var u = idx[i] & 1 ? 0 : 1;
 		var v = idx[i] & 2 ? 0 : 1;
 		this.texCoord[ii  ] = u;
 		this.texCoord[ii+1] = v;
