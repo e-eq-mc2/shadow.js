@@ -5,14 +5,14 @@
 "use strict";
 	
 function initGL(canvas) {
-	var DEBUG_MODE = true;
-	//var DEBUG_MODE = false;
+	var DEBUG_MODE = false;
 
 	var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl"); // A || B : if (A == true) return A else return B
 	if ( !gl ) {
-		alert('ERROR: not support "webgl" | "experimental-webgl"');
-		return;
+		alert('ERROR: WebGL is not available on your browser...orz');
+		return null;
 	}
+	
 	//set view port
 	gl.viewportWidth  = canvas.width ;
 	gl.viewportHeight = canvas.height;
@@ -22,7 +22,6 @@ function initGL(canvas) {
 	    return WebGLDebugUtils.makeDebugContext(gl);
 	}
     return gl;
-	//return DEBUG_MODE ? WebGLDebugUtils.makeDebugContext(gl) : gl;
 }
 
 function initShaders(gl, idVertexShader, idFragmentShader) {
@@ -87,23 +86,23 @@ function useShaders(gl, prgObj) {
 	gl.useProgram(prgObj);
 }
 
-var ArrayBuffer = function () {/* base class */};
-ArrayBuffer.prototype.initialize = function (buffer, bufferUsage, dataStride, dataType) {
+var ArrayBufferBase = function () {/* base class */};
+ArrayBufferBase.prototype.initialize = function (buffer, bufferUsage, dataStride, dataType) {
 	this.buffer      = buffer;
 	this.bufferUsage = bufferUsage; 
 	this.dataStride  = dataStride;
 	this.dataType    = dataType;
 	this.length      = 0;
 };
-ArrayBuffer.prototype.setBuffer = function (gl, data) {
+ArrayBufferBase.prototype.setBuffer = function (gl, data) {
 	this.length      = data.length;
 	gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
 	gl.bufferData(gl.ARRAY_BUFFER, data, this.bufferUsage);
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
 };
-ArrayBuffer.prototype.bind = function (gl, attributeLocation) {
-	gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer); // ARRAY_BUFFER -> this.buffer
-	gl.vertexAttribPointer( // ARRAY_BUFFER(-> this.buffer) -> generic vertex attribute values
+ArrayBufferBase.prototype.bind = function (gl, attributeLocation) {
+	gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer); // set this.buffer -> ARRAY_BUFFER(it's like a global value)
+	gl.vertexAttribPointer( // link ARRAY_BUFFER(-> this.buffer) -> generic vertex attribute values
 		attributeLocation,
 		this.dataStride, 
 		this.dataType,
@@ -111,14 +110,14 @@ ArrayBuffer.prototype.bind = function (gl, attributeLocation) {
 	);
 	gl.bindBuffer(gl.ARRAY_BUFFER, null); // this.buffer is already bound to generic vertex attribute values
 	//Think of it(gl.bindBuffer(gl.ARRAY_BUFFER, null)) like this. 
-	//glBindBuffer​ sets a global variable, then glVertexAttribPointer​ reads that global variable and stores it in the VAO. 
+	//glBindBuffer窶�sets a global variable, then glVertexAttribPointer窶�reads that global variable and stores it in the VAO. 
 	//Changing that global variable after it's been read doesn't affect the VAO. 
 	//You can think of it that way because that's exactly how it works.
-    //This is also why GL_ARRAY_BUFFER​ is not VAO state; 
-    //the actual association between an attribute index and a buffer is made by glVertexAttribPointer​.
+    //This is also why GL_ARRAY_BUFFER窶�is not VAO state; 
+    //the actual association between an attribute index and a buffer is made by glVertexAttribPointer窶�
 	gl.enableVertexAttribArray(attributeLocation);
 };
-ArrayBuffer.prototype.unbind = function (gl, attributeLocation) {
+ArrayBufferBase.prototype.unbind = function (gl, attributeLocation) {
 	gl.disableVertexAttribArray(attributeLocation);
 	//gl.bindBuffer(gl.ARRAY_BUFFER, null);
 };
@@ -131,7 +130,7 @@ function ArrayBuffer3f(gl) {
 		gl.FLOAT
 	);
 }
-ArrayBuffer3f.prototype = new ArrayBuffer();
+ArrayBuffer3f.prototype = new ArrayBufferBase();
 
 function ArrayBuffer2f(gl) {
 	this.initialize(
@@ -141,24 +140,24 @@ function ArrayBuffer2f(gl) {
 		gl.FLOAT
 	);
 }
-ArrayBuffer2f.prototype = new ArrayBuffer();
+ArrayBuffer2f.prototype = new ArrayBufferBase();
 
-var ElementArrayBuffer = function () {/* base class */};
-ElementArrayBuffer.prototype.initialize = function (buffer, bufferUsage) {
+var ElementArrayBufferBase = function () {/* base class */};
+ElementArrayBufferBase.prototype.initialize = function (buffer, bufferUsage) {
 	this.buffer      = buffer;
 	this.bufferUsage = bufferUsage; 
 	this.length      = 0;
 };
-ElementArrayBuffer.prototype.setBuffer = function (gl, data) {
+ElementArrayBufferBase.prototype.setBuffer = function (gl, data) {
 	this.length      = data.length;
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, this.bufferUsage);
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 };
-ElementArrayBuffer.prototype.bind = function (gl) {
+ElementArrayBufferBase.prototype.bind = function (gl) {
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffer);
 };
-ElementArrayBuffer.prototype.unbind = function (gl) {
+ElementArrayBufferBase.prototype.unbind = function (gl) {
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 };
 
@@ -168,7 +167,7 @@ function ElementArrayBuffer1us(gl) {
 		gl.STATIC_DRAW
 	);
 }
-ElementArrayBuffer1us.prototype = new ElementArrayBuffer();
+ElementArrayBuffer1us.prototype = new ElementArrayBufferBase();
 
 function Tex2DBuffer(gl) {
 	this.initialize(gl);

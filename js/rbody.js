@@ -655,7 +655,7 @@ Q4.add = function (q0, q1, dst) {
 	dst[2] = y;
 	dst[3] = z;
 	return dst;
-}
+};
 Q4.set = function (w, x, y, z, dst) {
 	if (! dst) dst = [];
 	dst[0] = w;

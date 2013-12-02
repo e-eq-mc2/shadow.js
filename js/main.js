@@ -4,7 +4,7 @@
 
 "use strict";
 
-$(function (bb) {
+$(function () {
 	// Model
 	var rbSys = new RbodySystem();
 	
@@ -13,11 +13,14 @@ $(function (bb) {
 	canvas.height = $("#canvasArea").height();
 
 	var gl = initGL(canvas);
+	if ( !gl ) return;
+
 	var prgObj = {
 		shadowPass : initShaders(gl, "shadowPassVs", "shadowPassFs"),
 		lightPass  : initShaders(gl, "lightPassVs" , "lightPassFs" )
 	};
 	
+	// attribute data
 	var attribute = {
 		shadowPass : new function (prgObj) {
 			this.vertex   = gl.getAttribLocation(prgObj, "vertex"  );
@@ -30,6 +33,8 @@ $(function (bb) {
 			this.texCoord = gl.getAttribLocation(prgObj, "texCoord");
 		} (prgObj.lightPass)
 	};
+
+	// uniform data
 	var uniform = {
 		shadowPass : new function (prgObj) {
 			this. pM               = gl.getUniformLocation(prgObj, "pM"               );
@@ -56,10 +61,13 @@ $(function (bb) {
 			this.lightDiffuse      = gl.getUniformLocation(prgObj, "lightDiffuse"     );
 			this.lightSpecular     = gl.getUniformLocation(prgObj, "lightSpecular"    );
 			this.windowSize        = gl.getUniformLocation(prgObj, "windowSize"       );
-		} (prgObj.lightPass) };
+		} (prgObj.lightPass) 
+	};
 	
+	// frame buffer
 	var frameBuf = new FrameBuffer(gl, canvas.width, canvas.height);
 	
+	// for body(particle)
 	var bodyBuf = new function () {
 		this.vertex = new ArrayBuffer3f(gl);
 		this.normal = new ArrayBuffer3f(gl);
@@ -70,6 +78,7 @@ $(function (bb) {
 		this.normal.setBuffer(gl, data.normal);
 		this.index .setBuffer(gl, data.index );
 	};
+	// for boundary floor
 	var floorBuf = new function () {
 		this.vertex   = new ArrayBuffer3f(gl);
 		this.normal   = new ArrayBuffer3f(gl);
@@ -98,34 +107,35 @@ $(function (bb) {
 		    {minFilter : gl.LINEAR_MIPMAP_LINEAR, magFilter : gl.LINEAR}
 	    );
 	};
+	// for boundary faces except for the floor
 	var faceBuf = new function () {
 		var ax = -3; var bx =  3;
 		var ay =  0; var by =  6;
 		var az = -3; var bz =  3;
 		var v = [
-			[ ax, ay, az ], [ bx, ay, az ], [ bx, by, az ], [ ax, by, az ],
-			[ ax, ay, bz ], [ bx, ay, bz ], [ bx, by, bz ], [ ax, by, bz ]
+			[ax, ay, az], [bx, ay, az], [bx, by, az], [ax, by, az],
+			[ax, ay, bz], [bx, ay, bz], [bx, by, bz], [ax, by, bz]
 		];
 		var f = [
-			[ 4, 0, 3, 7 ], // -x face
-			[ 1, 5, 6, 2 ], // +x face
-			[ 4, 5, 1, 0 ], // -y face
-			[ 3, 2, 6, 7 ], // +y face
-			[ 0, 1, 2, 3 ], // -z face
-			[ 5, 4, 7, 6 ]  // +z face
+			[4, 0, 3, 7], // -x face
+			[1, 5, 6, 2], // +x face
+			[4, 5, 1, 0], // -y face
+			[3, 2, 6, 7], // +y face
+			[0, 1, 2, 3], // -z face
+			[5, 4, 7, 6]  // +z face
 		];
 		var n = [
-			[  1,  0,  0], // -x face
-			[ -1,  0,  0], // +x face
-			[  0,  1,  0], // -y face
-			[  0, -1,  0], // +y face
-			[  0,  0,  1], // -z face
-			[  0,  0, -1]  // +z face
+			[ 1,  0,  0], // -x face
+			[-1,  0,  0], // +x face
+			[ 0,  1,  0], // -y face
+			[ 0, -1,  0], // +y face
+			[ 0,  0,  1], // -z face
+			[ 0,  0, -1]  // +z face
 		];
-		var flist = [0, 1, 3, 4, 5];
-		var bary = new Array(flist.length);
-		for (var i=0; i < flist.length; ++i) {
-			bary[i] = new function(idx) {
+		var faceList = [0, 1, 3, 4, 5];
+		var bufs = new Array(faceList.length);
+		for (var i=0; i < faceList.length; ++i) {
+			bufs[i] = new function(idx) {
 				this.vertex   = new ArrayBuffer3f(gl);
 				this.normal   = new ArrayBuffer3f(gl);
 				this.texCoord = new ArrayBuffer2f(gl);
@@ -143,17 +153,16 @@ $(function (bb) {
 				this.texCoord.setBuffer(gl, data.texCoord);
 				this.index   .setBuffer(gl, data.index   );
 				var img = [0, 1, 4, 5].indexOf(idx) >= 0 ? "img/waza.png" :  "img/kokoro.png";
-				//var img = [0, 1].indexOf(idx) >= 0 ? "img/kokoro.png" :
-				//          [4, 5].indexOf(idx) >= 0 ? "img/waza.png"   : "img/gou.png"; 
 				this.tex2D   .setBufferFromImage(
 				    gl, 
 				    img, 
 				    {minFilter : gl.LINEAR_MIPMAP_LINEAR, magFilter : gl.LINEAR}
 			    );
-			} (flist[i]);
+			} (faceList[i]);
 		} // for i
-		return bary;
+		return bufs;
 	}; 
+	// for boundary lines
     var boundaryBuf = new function () {
 		this.vertex = new ArrayBuffer3f(gl, attribute.vertex);
 		this.index  = new ElementArrayBuffer1us(gl);
@@ -163,17 +172,6 @@ $(function (bb) {
 		this.index .setBuffer(gl, data.index );
 	};
 	
-	var bodyColor = (function (num) {
-		var color = new Array(num * 3);
-		for (var i=0; i < num; ++i) {
-			var r = Math.random();
-			var g = Math.random();
-			var b = Math.random();
-			color[i] = {r : r, g : g, b : b};
-		}
-		return color;
-	} (rbSys.body.length));
-
 	var MAX_LOOP = 100000;
 	var TIME_OUT =   20;
 	var loop  = 0;
@@ -182,6 +180,7 @@ $(function (bb) {
 	var timer1 = new Timer();
 	
 	(function drawLoop() {
+		// 2-pass rendering
 		timer0.start();
 	
 		timer1.start();
