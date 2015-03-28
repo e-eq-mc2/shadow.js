@@ -2,6 +2,8 @@ shadow.js - a WebGL demo
 ========
 This is a **WebGL** demo based on **Rigid-body Simulation** and **Shadow Mapping**.
 
+[Demo Page Here!!](http://e-eq-mc2.github.io/shadow.js/) (try wth a WebGL-enabled browser)
+
 ![](img/thumbnail.png?raw=true)
 
 Quick Start
