@@ -176,9 +176,21 @@ Tex2DBuffer.prototype.initialize = function (gl) {
 	this.img = new Image();
 	this.texuture = gl.createTexture();
 };
+Tex2DBuffer.prototype.setBufferFromData = function (gl, data, width, height, opt) {
+  var dat  = new Uint8Array(data);
+	gl.bindTexture(gl.TEXTURE_2D, this.texuture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, dat);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, opt.minFilter ? opt.minFilter : gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, opt.magFilter ? opt.magFilter : gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, opt.wrapS ? opt.wrapS : gl.REPEAT);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, opt.wrapT ? opt.wrapT : gl.REPEAT);
+	gl.generateMipmap(gl.TEXTURE_2D);
+	gl.bindTexture(gl.TEXTURE_2D, null);
+};
 Tex2DBuffer.prototype.setBufferFromImage = function (gl, src, opt) {
-	var img = this.img;
+	var img      = this.img;
 	var texuture = this.texuture;
+
 	img.onload = function () {
 		console.log("webgl: Image finish loading ... " + new Date().toLocaleString());
 		gl.bindTexture(gl.TEXTURE_2D, texuture);
@@ -192,16 +204,6 @@ Tex2DBuffer.prototype.setBufferFromImage = function (gl, src, opt) {
 	};
 	img.src = src;
 	console.log("webgl: Image begin loading .... " + new Date().toLocaleString());
-};
-Tex2DBuffer.prototype.setBufferFromData = function (gl, data, width, height, opt) {
-	gl.bindTexture(gl.TEXTURE_2D, this.texuture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, opt.minFilter ? opt.minFilter : gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, opt.magFilter ? opt.magFilter : gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, opt.wrapS ? opt.wrapS : gl.REPEAT);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, opt.wrapT ? opt.wrapT : gl.REPEAT);
-	gl.generateMipmap(gl.TEXTURE_2D);
-	gl.bindTexture(gl.TEXTURE_2D, null);
 };
 Tex2DBuffer.prototype.bind = function (gl, textureUnit, uniformLocation) {
 	gl.activeTexture(gl[ "TEXTURE" + textureUnit ]);
