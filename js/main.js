@@ -15,6 +15,8 @@ $(function () {
 	var gl = initGL(canvas);
 	if ( !gl ) return;
 
+  WebGLDebugUtils.init(gl);
+
 	var prgObj = {
 		shadowPass : initShaders(gl, "shadowPassVs", "shadowPassFs"),
 		lightPass  : initShaders(gl, "lightPassVs" , "lightPassFs" )
@@ -297,7 +299,7 @@ $(function () {
 		timer0.stop();
 		var err = gl.getError();
 		if (err != gl.NO_ERROR && err != gl.CONTEXT_LOST_WEBGL) {
-			alert( WebGLDebugUtils.glEnumToString(err) );
+      console.log( WebGLDebugUtils.glEnumToString(err) );
 		}
 		
 		var ela0 = Math.ceil(timer0.elapsedMsec());
